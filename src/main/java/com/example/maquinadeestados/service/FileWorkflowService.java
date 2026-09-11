@@ -20,14 +20,14 @@ public class FileWorkflowService {
 
     public UUID create() {
         UUID id = UUID.randomUUID();
-        states.put(id, FileState.RECEIVED);
+        states.put(id, FileState.CREATED);
         return id;
     }
 
     public FileState getState(UUID id) {
         FileState state = states.get(id);
         if (state == null) {
-            throw new IllegalArgumentException("No existe el fichero: " + id);
+            throw new IllegalArgumentException("No existe el pedido: " + id);
         }
         return state;
     }
@@ -35,7 +35,7 @@ public class FileWorkflowService {
     public FileState fire(UUID id, FileEvent event) {
         return states.compute(id, (key, currentState) -> {
             if (currentState == null) {
-                throw new IllegalArgumentException("No existe el fichero: " + id);
+                throw new IllegalArgumentException("No existe el pedido: " + id);
             }
             return stateMachine.transition(currentState, event);
         });
