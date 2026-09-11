@@ -1,49 +1,34 @@
 # maquina-de-estados
 
-Ejemplo mínimo de una máquina de estados en Spring Boot basada en la regla:
+Ejemplo mínimo de una máquina de estados en Spring Boot basado en el ejemplo conceptual de pedidos de la página **Máquinas de estados — Fundamentos teóricos**:
 
 > **estado actual + evento = nuevo estado**
 
-El microservicio no llama a `nextStep()`. Publica un evento explícito y la máquina decide si la transición es válida y cuál es el nuevo estado.
+El pedido empieza en `CREATED`. La máquina decide qué eventos son válidos y cuál es el siguiente estado.
 
-## Flujo
+## Flujo principal
 
 ```text
-RECEIVED
-   |
-   | DATA_READY
-   v
-DATA_READY
-   |
-   | FILE_CREATED
-   v
-FILE_CREATED
-   |
-   | FILE_SAVED
-   v
-FILE_SAVED
-   |
-   | RESPONSE_SENT
-   v
-RESPONSE_SENT
-   |
-   | ACK_RECEIVED
-   v
-FINISHED
+CREATED -- PAY --> PAID -- SHIP --> SHIPPED
+```
 
-Cualquier estado no terminal -- FAIL --> ERROR
+También existen estas transiciones:
+
+```text
+CREATED -- CANCEL --> CANCELLED
+PAID    -- REFUND --> REFUNDED
 ```
 
 ## Tabla de transiciones
 
-| Estado actual | Evento | Nuevo estado |
-|---|---|---|
-| `RECEIVED` | `DATA_READY` | `DATA_READY` |
-| `DATA_READY` | `FILE_CREATED` | `FILE_CREATED` |
-| `FILE_CREATED` | `FILE_SAVED` | `FILE_SAVED` |
-| `FILE_SAVED` | `RESPONSE_SENT` | `RESPONSE_SENT` |
-| `RESPONSE_SENT` | `ACK_RECEIVED` | `FINISHED` |
-| Estado no terminal | `FAIL` | `ERROR` |
+| Estado actual | Evento | Condición conceptual | Nuevo estado |
+|---|---|---|---|
+| `CREATED` | `PAY` | pago autorizado | `PAID` |
+| `CREATED` | `CANCEL` | — | `CANCELLED` |
+| `PAID` | `SHIP` | stock disponible | `SHIPPED` |
+| `PAID` | `REFUND` | — | `REFUNDED` |
+
+Las condiciones aparecen como parte del modelo conceptual de la web; este proyecto mínimo se concentra en la tabla de estados/eventos y asume que esas validaciones externas ya se han realizado.
 
 Una combinación no incluida en la tabla produce `InvalidTransitionException`.
 
@@ -67,10 +52,10 @@ mvn test
 
 ## API de ejemplo
 
-### 1. Crear un fichero/workflow
+### 1. Crear un pedido
 
 ```bash
-curl -X POST http://localhost:8080/api/files
+curl -X POST http://localhost:8080/api/orders
 ```
 
 Respuesta:
@@ -78,47 +63,40 @@ Respuesta:
 ```json
 {
   "id": "2e39d8e0-08d1-4bed-b141-375ba6d06f9a",
-  "state": "RECEIVED"
+  "state": "CREATED"
 }
 ```
 
-### 2. Lanzar un evento
+### 2. Pagar el pedido
 
 ```bash
-curl -X POST http://localhost:8080/api/files/<ID>/events \
+curl -X POST http://localhost:8080/api/orders/<ID>/events \
   -H 'Content-Type: application/json' \
-  -d '{"event":"DATA_READY"}'
+  -d '{"event":"PAY"}'
 ```
 
-Después se pueden enviar, en orden:
-
-```text
-FILE_CREATED
-FILE_SAVED
-RESPONSE_SENT
-ACK_RECEIVED
-```
-
-### 3. Consultar el estado
+### 3. Enviar el pedido
 
 ```bash
-curl http://localhost:8080/api/files/<ID>
-```
-
-### 4. Provocar un error de negocio/técnico
-
-```bash
-curl -X POST http://localhost:8080/api/files/<ID>/events \
+curl -X POST http://localhost:8080/api/orders/<ID>/events \
   -H 'Content-Type: application/json' \
-  -d '{"event":"FAIL"}'
+  -d '{"event":"SHIP"}'
 ```
+
+### 4. Consultar el estado
+
+```bash
+curl http://localhost:8080/api/orders/<ID>
+```
+
+Para explorar las ramas alternativas usa `CANCEL` desde `CREATED` o `REFUND` desde `PAID`.
 
 ## Diseño
 
-- `FileState`: estados posibles.
-- `FileEvent`: sucesos que pueden ocurrir.
+- `FileState`: estados posibles del pedido (`CREATED`, `PAID`, `SHIPPED`, `CANCELLED`, `REFUNDED`).
+- `FileEvent`: eventos de negocio (`PAY`, `CANCEL`, `SHIP`, `REFUND`).
 - `FileStateMachine`: única clase que conoce las transiciones permitidas.
 - `FileWorkflowService`: conserva el estado actual del ejemplo en memoria.
-- `StateMachineController`: API REST para probar la máquina.
+- `StateMachineController`: API REST bajo `/api/orders` para probar la máquina.
 
-En un sistema real, `FileWorkflowService` debería sustituir el `ConcurrentHashMap` por persistencia en base de datos y, si interesa auditoría, añadir una tabla de histórico de transiciones.
+Los nombres de las clases se mantienen para conservar la estructura original del repositorio; el dominio del ejemplo es ahora el pedido descrito en la página teórica.
