@@ -13,46 +13,29 @@ class FileStateMachineTest {
     private final FileStateMachine stateMachine = new FileStateMachine();
 
     @Test
-    void shouldCompleteHappyPath() {
-        FileState state = FileState.RECEIVED;
+    void shouldPayAndShipOrder() {
+        FileState state = stateMachine.transition(FileState.CREATED, FileEvent.PAY);
+        assertEquals(FileState.PAID, state);
 
-        state = stateMachine.transition(state, FileEvent.DATA_READY);
-        assertEquals(FileState.DATA_READY, state);
-
-        state = stateMachine.transition(state, FileEvent.FILE_CREATED);
-        assertEquals(FileState.FILE_CREATED, state);
-
-        state = stateMachine.transition(state, FileEvent.FILE_SAVED);
-        assertEquals(FileState.FILE_SAVED, state);
-
-        state = stateMachine.transition(state, FileEvent.RESPONSE_SENT);
-        assertEquals(FileState.RESPONSE_SENT, state);
-
-        state = stateMachine.transition(state, FileEvent.ACK_RECEIVED);
-        assertEquals(FileState.FINISHED, state);
+        state = stateMachine.transition(state, FileEvent.SHIP);
+        assertEquals(FileState.SHIPPED, state);
     }
 
     @Test
-    void shouldMoveToErrorWhenFailEventArrives() {
-        assertEquals(
-            FileState.ERROR,
-            stateMachine.transition(FileState.FILE_CREATED, FileEvent.FAIL)
-        );
+    void shouldCancelCreatedOrder() {
+        assertEquals(FileState.CANCELLED,
+            stateMachine.transition(FileState.CREATED, FileEvent.CANCEL));
+    }
+
+    @Test
+    void shouldRefundPaidOrder() {
+        assertEquals(FileState.REFUNDED,
+            stateMachine.transition(FileState.PAID, FileEvent.REFUND));
     }
 
     @Test
     void shouldRejectInvalidTransition() {
-        assertThrows(
-            InvalidTransitionException.class,
-            () -> stateMachine.transition(FileState.RECEIVED, FileEvent.FILE_SAVED)
-        );
-    }
-
-    @Test
-    void shouldNotLeaveTerminalState() {
-        assertThrows(
-            InvalidTransitionException.class,
-            () -> stateMachine.transition(FileState.FINISHED, FileEvent.FAIL)
-        );
+        assertThrows(InvalidTransitionException.class,
+            () -> stateMachine.transition(FileState.CREATED, FileEvent.SHIP));
     }
 }
