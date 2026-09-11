@@ -13,15 +13,15 @@ class FileWorkflowServiceTest {
     private final FileWorkflowService workflow = new FileWorkflowService(new FileStateMachine());
 
     @Test
-    void shouldCreateFileInReceivedState() {
+    void shouldCreateOrderInCreatedState() {
         UUID id = workflow.create();
-        assertEquals(FileState.RECEIVED, workflow.getState(id));
+        assertEquals(FileState.CREATED, workflow.getState(id));
     }
 
     @Test
     void shouldPersistStateInMemoryAfterEvent() {
         UUID id = workflow.create();
-        workflow.fire(id, FileEvent.DATA_READY);
-        assertEquals(FileState.DATA_READY, workflow.getState(id));
+        workflow.fire(id, FileEvent.PAY);
+        assertEquals(FileState.PAID, workflow.getState(id));
     }
 }
