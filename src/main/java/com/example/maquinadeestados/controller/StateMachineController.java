@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/files")
+@RequestMapping("/api/orders")
 public class StateMachineController {
 
     private final FileWorkflowService workflowService;
